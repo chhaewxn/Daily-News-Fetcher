@@ -31,7 +31,7 @@ News articles are organized and stored in two Google Sheets: "Cumulative News" f
 Headers are standardized, and the sheets are updated daily.
 
 ## Script Breakdown
-### 1. News Fetching
+### (1) News Fetching
 The fetchNewsFeed function is the core of the script, responsible for retrieving news articles from the specified RSS feeds based on a predefined set of keywords.
 
 ```javascript
@@ -83,7 +83,7 @@ function fetchNewsFeed() {
 }
 ```
 
-### 2. News Summarization
+### (2) News Summarization
 The fetchSummary function calls the OpenAI API to generate summaries for the news articles.
 
 ```javascript
@@ -117,7 +117,7 @@ function fetchSummary(prompt, ass_msg = `당신은 전문적인 뉴스 요약 AI
 }
 ```
 
-### 3. Duplicate Detection
+### (3) Duplicate Detection
 The isArticleDuplicate function uses the Jaccard Similarity model to identify duplicate articles.
 
 ```javascript
@@ -139,7 +139,7 @@ function isArticleDuplicate(newArticle, existingArticles) {
 }
 ```
 
-### 4. Email Notification
+### (4) Email Notification
 The sendEmailWithTable function formats the news data into an HTML table and sends it via email.
 
 ```javascript
