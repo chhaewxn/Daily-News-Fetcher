@@ -1,4 +1,4 @@
-# 📰 Daily NewsFetcher
+# 📰 Daily News Fetcher
 
 ## Introduction
 This NewsFetcher script is designed to automate the process of gathering, summarizing, and disseminating energy transition-related news articles. By leveraging Google Apps Script, OpenAI's GPT-3.5-turbo model, and various RSS feeds, this tool efficiently compiles relevant news and delivers a daily digest to the designated recipients.
