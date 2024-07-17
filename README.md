@@ -38,9 +38,7 @@ The fetchNewsFeed function is the core of the script, responsible for retrieving
 function fetchNewsFeed() {
   // Array of keyword sets
   var keywordSets = [
-    ["에어리퀴드"],
-    ["GS", "칼텍스"],
-    // Additional keywords...
+   // Enter the set of keywords you want to extract.
   ];
 
   // Initialize an array to store the rows of data
@@ -52,6 +50,7 @@ function fetchNewsFeed() {
     var keyword1 = keywordSets[i][0];
     var keyword2 = keywordSets[i][1];
     var urls = [
+      // Add RSS Feed URL
       `https://news.google.com/rss/search?q=${encodeURIComponent(keyword1)}+${encodeURIComponent(keyword2)}&hl=ko&gl=KR&ceid=KR:ko`,
       'https://www.energy-news.co.kr/rss/allArticle.xml',
       'https://www.motie.go.kr/kor/article/ATCL3f49a5a8c/rss'
