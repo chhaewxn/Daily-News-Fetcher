@@ -256,11 +256,8 @@ function fetchAndCategorizeNews() {
     var dateString = Utilities.formatDate(today, Session.getScriptTimeZone(), "yyyy년 MM월 dd일");
     var subject = dateString + ' Daily News Summary';
     
-    // 부서원 전체에게 보내는 메일 
-    // var recipient = 'jason.ahn@airliquide.com, sewon.lee@airliquide.com, joungho.an@airliquide.com, jaeeun.kim@airliquide.com, yeyoung.yi@airliquide.com, jongnam.won@airliquide.com, jinkyu.song@airliquide.com, hang-real.ko@airliquide.com, chaewon.song@airliquide.com, chaewon1019@ewhain.net';
-
-    // 테스트용 내 메일  
-    var recipient = 'chaewon.song@airliquide.com, chaewon1019@ewhain.net';
+    // 테스트용 메일 recipient
+    var recipient = 'chaewon1019@ewhain.net';
     sendEmailWithTable(subject, recipient, rows);
 
   } else {
