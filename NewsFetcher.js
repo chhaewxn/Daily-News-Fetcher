@@ -272,41 +272,7 @@ function formatRow(row) {
 }
 
 function fetchNewsFeed() {
-  var keywordSets = [
-    ["에어리퀴드", " "],
-    ["GS", "칼텍스"],
-    ["롯데케미칼", " "],
-    ["LG", "화학"],
-    ["한화", "솔루션"],
-    ["한화", "에너지"],
-    ["포스코", "에너지"],
-    ["SK", "E&S"],
-    ["SK", "이노베이션"],
-    ["한양", "에너지"],
-    ["여천", "NCC"],
-    ["덕양", "에너지"],
-    ["SPG", " "],
-    ["린데", " "],
-    ["에어프로덕츠", " "],
-    ["대성산업가스", " "],
-    ["에어퍼스트", " "],
-    ["바스프", " "],
-    ["TDI", " "],
-    ["MDI"," "],
-    ["Benzene", " "],
-    ["Toluene", " "],
-    ["한국가스공사", "천연가스"],
-    ["한국가스공사", "도시가스"],
-    ["한국전력", "전기요금"],
-    ["암모니아", "크랙킹"],
-    ["블루", "암모니아"],
-    ["그린", "암모니아"],
-    ["블루", "수소"],
-    ["그린", "수소"],
-    ["CCS", "셰퍼드"],
-    ["에너지전환", " "]   
-  ];
-
+  var keywordSets = fetchKeywordSets();
   var now = new Date();
   var updateTime = Utilities.formatDate(now, Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm");
 
