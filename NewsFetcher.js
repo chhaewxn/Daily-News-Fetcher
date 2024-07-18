@@ -124,6 +124,25 @@ function isArticleDuplicate(newArticle, existingArticles) {
   return false;
 }
 
+// 키워드셋 반영하는 시트 별도로 분리하기 
+function fetchKeywordSets() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName("KeywordSets");
+  var dataRange = sheet.getDataRange();
+  var values = dataRange.getValues();
+  
+  var keywordSets = [];
+  for (var i = 1; i < values.length; i++) {  // 첫 번째 행은 건너뛰기 
+    var keyword1 = values[i][0].toString().trim();
+    var keyword2 = values[i][1].toString().trim();
+    if (keyword1 !== "") {  // keyword1이 비어있지 않은 경우에만 추가
+      keywordSets.push([keyword1, keyword2]);
+    }
+  }
+  
+  return keywordSets;
+}
+
 function sendEmailWithTable(subject, recipient, tableData) {
   // 현재 날짜 가져오기
   var today = new Date();
