@@ -139,7 +139,15 @@ function fetchKeywordSets() {
       keywordSets.push([keyword1, keyword2]);
     }
   }
-  
+
+// 키워드셋 업데이트 트리거 설정 
+function onEdit(e) {
+  var sheet = e.source.getActiveSheet();
+  if (sheet.getName() === "KeywordSets") {
+    // KeywordSets 시트가 수정되었을 때 실행할 코드
+    Logger.log("KeywordSets updated");
+  }
+}
   return keywordSets;
 }
 
