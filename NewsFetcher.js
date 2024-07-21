@@ -295,9 +295,6 @@ function fetchNewsFeed() {
     // Energy News Korea RSS Feed
     var energyNewsUrl = 'https://www.energy-news.co.kr/rss/allArticle.xml';
 
-    // 중앙일보 RSS Feed
-    // var joinNewsUrl = 'http://rss.joinsmsn.com/joins_it_list.xml';
-
     // 산업자원통상부 RSS Feed
     var motieNewsUrl = 'https://www.motie.go.kr/kor/article/ATCL3f49a5a8c/rss';
 
