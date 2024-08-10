@@ -1,109 +1,54 @@
 # 📰 Daily News Fetcher
 
-## Introduction
-This NewsFetcher script is designed to automate the process of gathering, summarizing, and disseminating energy transition-related news articles. By leveraging Google Apps Script, OpenAI's GPT-3.5-turbo model, and various RSS feeds, this tool efficiently compiles relevant news and delivers a daily digest to the designated recipients.
+## Overview
+Daily News Fetcher is an automated news collection and summarization system developed using Google Apps Script. It collects news related to specific keywords, summarizes them using AI, and sends email digests.
 
-## Features
-### (1) Automated News Fetching:
+## Key Features
+1. Multi-source news collection (Google News, Energy News Korea)
+2. Keyword-based news filtering
+3. News summarization using OpenAI GPT model
+4. Email dispatch (card news format)
+5. Data storage and management using Google Sheets
 
-The script retrieves news articles from multiple RSS feeds, including Google News, Energy News Korea, and the Ministry of Trade, Industry, and Energy (MOTIE).
-Keywords related to energy transition and relevant companies are used to filter and fetch specific news articles.
-
-### (2) News Summarization:
-
-OpenAI's GPT-3.5-turbo model is used to summarize the fetched news articles.
-The summarization follows specific guidelines to ensure the output is concise, relevant, and professional. // 여기서 CoT 전략을 활용한 프롬프트엔지니어링 파트 추가하기 
-
-### (3) Duplicate Article Detection:
-
-A Jaccard Similarity model is employed to identify and eliminate duplicate articles based on the title and description of the news.
-The similarity threshold is set to 0.3 to ensure only unique articles are included.
-
-### (4) Email Notification:
-
-A daily email summarizing the fetched news is sent to the designated recipients.
-The email includes a formatted HTML table containing the keywords, news titles, summaries, publication dates, and links to the full articles.
-Additional content and links to the cumulative Google Sheet are provided for easy reference.
-
-### (5) Data Management:
-
-News articles are organized and stored in two Google Sheets: "Cumulative News" for all fetched articles and "Daily News" for the current day's articles.
-Headers are standardized, and the sheets are updated daily.
+## Technical Stack
+- Google Apps Script
+- XML parsing (XmlService)
+- OpenAI GPT API
+- Google Sheets API
+- Gmail API
 
 ## Script Breakdown
-### (1) News Fetching
-The fetchNewsFeed function is the core of the script, responsible for retrieving news articles from the specified RSS feeds based on a predefined set of keywords.
+### (1) News Summarization
+This function uses the OpenAI GPT API to summarize news content. It sends a structured prompt to the API and handles the response, including error management.
 
 ```javascript
-function fetchNewsFeed() {
-  // Array of keyword sets
-  var keywordSets = [
-   // Enter the set of keywords you want to extract.
-  ];
-
-  // Initialize an array to store the rows of data
-  var rows = [];
-  rows.push(["Update Time", "Keyword", "Keyword", "Title of News", "Link to News Article", "News Summary", "Date of Publication"]);
-
-  // Loop through each set of keywords and fetch news articles
-  for (var i = 0; i < keywordSets.length; i++) {
-    var keyword1 = keywordSets[i][0];
-    var keyword2 = keywordSets[i][1];
-    var urls = [
-      // Add RSS Feed URL
-      `https://news.google.com/rss/search?q=${encodeURIComponent(keyword1)}+${encodeURIComponent(keyword2)}&hl=ko&gl=KR&ceid=KR:ko`,
-      'https://www.energy-news.co.kr/rss/allArticle.xml',
-      'https://www.motie.go.kr/kor/article/ATCL3f49a5a8c/rss'
-    ];
-
-    // Fetch articles from each URL
-    for (var u = 0; u < urls.length; u++) {
-      var response = UrlFetchApp.fetch(urls[u]);
-      if (response.getResponseCode() === 200) {
-        var document = XmlService.parse(response.getContentText());
-        var items = document.getRootElement().getChild("channel").getChildren("item");
-
-        for (var j = 0; j < items.length; j++) {
-          var article = items[j];
-          var title = article.getChild("title").getText();
-          var link = article.getChild("link").getText();
-          var description = article.getChild("description").getText();
-          var pubDate = new Date(article.getChild("pubDate").getText());
-
-          // Check for duplicates and relevance
-          if (!isArticleDuplicate({ title, description }) && (title.includes(keyword1) && title.includes(keyword2) || description.includes(keyword1) && description.includes(keyword2))) {
-            var summary = fetchSummary(description);
-            rows.push([Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm"), keyword1, keyword2, title, link, summary, Utilities.formatDate(pubDate, Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm")]);
-          }
-        }
-      }
-    }
-  }
-  return rows;
-}
-```
-
-### (2) News Summarization
-The fetchSummary function calls the OpenAI API to generate summaries for the news articles.
-
-```javascript
-function fetchSummary(prompt, ass_msg = `당신은 전문적인 뉴스 요약 AI입니다. 주어진 기사를 다음 지침에 따라 요약해 주세요: ...`, model="gpt-3.5-turbo") {
+function fetchSummary(prompt) {
   var url = "https://api.openai.com/v1/chat/completions";
   var headers = {
-    "Authorization": "Bearer sk-xxx", // Replace with actual API key
+    "Authorization": "Bearer YOUR_API_KEY",
     "Content-Type": "application/json"
   };
 
   var payload = {
-    model: model,
-    messages: [{ "role": "system", content: ass_msg }, { "role": "user", content: prompt }],
+    model: "gpt-4o-mini",
+    messages: [
+      {
+        "role": "system",
+        "content": "You are a professional news summarization AI. Summarize the given article according to the following guidelines:\n1. Summarize the main facts and claims of the article in paragraph form.\n2. Use relevant industry terms and expertise, but write in natural Korean.\n3. Summarize objectively without bias.\n4. Write each sentence concisely and clearly.\n5. Limit the entire summary to 200 characters."
+      },
+      {
+        "role": "user",
+        "content": prompt
+      }
+    ],
     temperature: 1
   };
 
   var options = {
     "method": "post",
     "headers": headers,
-    "payload": JSON.stringify(payload)
+    "payload": JSON.stringify(payload),
+    "muteHttpExceptions": true
   };
 
   try {
@@ -117,13 +62,13 @@ function fetchSummary(prompt, ass_msg = `당신은 전문적인 뉴스 요약 AI
 }
 ```
 
-### (3) Duplicate Detection
-The isArticleDuplicate function uses the Jaccard Similarity model to identify duplicate articles.
+### (2) Duplicate Article Detection
+These functions implement Jaccard similarity to detect duplicate articles. The jaccardSimilarity function calculates the similarity between two strings, while isArticleDuplicate uses this to check if a new article is similar to any existing ones.
 
 ```javascript
 function jaccardSimilarity(str1, str2) {
-  var set1 = new Set(str1.split(/\s+/));
-  var set2 = new Set(str2.split(/\s+/));
+  var set1 = new Set(str1.toLowerCase().split(/\s+/));
+  var set2 = new Set(str2.toLowerCase().split(/\s+/));
   var intersection = new Set([...set1].filter(x => set2.has(x)));
   var union = new Set([...set1, ...set2]);
   return intersection.size / union.size;
@@ -131,49 +76,129 @@ function jaccardSimilarity(str1, str2) {
 
 function isArticleDuplicate(newArticle, existingArticles) {
   for (var i = 0; i < existingArticles.length; i++) {
-    if (jaccardSimilarity(newArticle.title, existingArticles[i].title) > 0.5 || jaccardSimilarity(newArticle.description, existingArticles[i].description) > 0.5) {
-      return true;
+    var existingArticle = existingArticles[i];
+    if (jaccardSimilarity(newArticle.title.toLowerCase(), existingArticle.title.toLowerCase()) > 0.15 || 
+        jaccardSimilarity(newArticle.description.toLowerCase(), existingArticle.description.toLowerCase()) > 0.15) {
+      return true; 
     }
   }
   return false;
 }
 ```
 
-### (4) Email Notification
-The sendEmailWithTable function formats the news data into an HTML table and sends it via email.
+### (3) Keyword Management
+These functions fetch keyword sets and exclusion keywords from Google Sheets. This approach allows for flexible keyword management without modifying the code.
 
 ```javascript
-function sendEmailWithTable(subject, recipient, tableData) {
+function fetchKeywordSets() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName("KeywordSets_v1");
+  var dataRange = sheet.getDataRange();
+  var values = dataRange.getValues();
+  
+  var keywordSets = [];
+  for (var i = 1; i < values.length; i++) {
+    var keyword1 = values[i][0].toString().trim();
+    var keyword2 = values[i][1].toString().trim();
+    if (keyword1 !== "") {
+      keywordSets.push([keyword1, keyword2]);
+    }
+  }
+  
+  return keywordSets;
+}
+
+function fetchExcludeKeywords() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName("Exclude Keywords");
+  var dataRange = sheet.getDataRange();
+  var values = dataRange.getValues();
+  
+  var excludeKeywords = [];
+  for (var i = 1; i < values.length; i++) {
+    var keyword = values[i][0].toString().trim().toLowerCase();
+    if (keyword !== "") {
+      excludeKeywords.push(keyword);
+    }
+  }
+  
+  return excludeKeywords;
+}
+```
+
+### (4) Email Generation and Sending
+This function generates an HTML email with a card-based layout for each news item, grouped by keywords. It uses inline CSS for maximum email client compatibility.
+
+```javascript
+function sendEmailWithCardNews(subject, recipient, newsData) {
   var today = new Date();
   var dateString = Utilities.formatDate(today, Session.getScriptTimeZone(), "yyyy년 MM월 dd일");
 
-  var tableStyle = 'border-collapse: collapse; width: 100%;';
-  var thStyle = 'background-color: #f0f0f0; font-weight: bold; border: 2px solid #ddd; padding: 8px; text-align: left;';
-  var tdStyle = 'border: 1px solid #ddd; padding: 8px;';
-
-  var htmlTable = '<table style="' + tableStyle + '">';
-  htmlTable += '<tr><th style="' + thStyle + '">Keyword</th><th style="' + thStyle + '">Title of News</th><th style="' + thStyle + '">News Summary</th><th style="' + thStyle + '">Date of Publication</th><th style="' + thStyle + '">Link to News Article</th></tr>';
-
-  for (var i = 1; i < tableData.length; i++) {
-    htmlTable += '<tr>';
-    htmlTable += '<td style="' + tdStyle + '">' + tableData[i][1] + ' ' + tableData[i][2] + '</td>';
-    htmlTable += '<td style="' + tdStyle + '">' + tableData[i][3] + '</td>';
-    htmlTable += '<td style="' + tdStyle + '">' + tableData[i][5] + '</td>';
-    htmlTable += '<td style="' + tdStyle + '">' + tableData[i][6] + '</td>';
-    htmlTable += '<td style="' + tdStyle + '"><a href="' + tableData[i][4] + '">Link</a></td>';
-    htmlTable += '</tr>';
+  // Group news by keywords
+  var newsGroups = {};
+  for (var i = 1; i < newsData.length; i++) {
+    var key = newsData[i][1] + (newsData[i][2] ? ' ' + newsData[i][2] : '');
+    if (!newsGroups[key]) {
+      newsGroups[key] = [];
+    }
+    newsGroups[key].push(newsData[i]);
   }
-  htmlTable += '</table>';
 
-  var additionalContent = '<p> 부가 설명 작성하기 </p>';
+  // HTML template and card news generation
+  var htmlTemplate = `...`; // HTML template code
+  var cardNews = '';
+  for (var key in newsGroups) {
+    cardNews += `...`; // Card news HTML generation
+  }
+
+  var htmlBody = htmlTemplate.replace('{dateString}', dateString).replace('{cardNews}', cardNews);
+
+  var guidelineImageId = "1AOA_Qu5FfxlF4xVrJy935Q-NZz05bSSa";
+  var guidelineImage = DriveApp.getFileById(guidelineImageId).getBlob().setName("KeywordSets_Guideline.png");
 
   var emailOptions = {
     to: recipient,
-    subject: subject + dateString,
-    htmlBody: htmlTable + additionalContent
+    subject: subject,
+    htmlBody: htmlBody,
+    attachments: [guidelineImage]
   };
 
   MailApp.sendEmail(emailOptions);
+}
+```
+
+### (5) News Fetching and Processing
+This function fetches news from multiple sources, filters them based on keywords and exclusion criteria, checks for duplicates, and summarizes the content.
+```javascript
+function fetchNewsFeed() {
+  var keywordSets = fetchKeywordSets();
+  var excludeKeywords = fetchExcludeKeywords();
+  var now = new Date();
+  var updateTime = Utilities.formatDate(now, Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm");
+
+  var rows = [];
+  rows.push(["Update Time", "Keyword", "Keyword", "Title of News", "Link to News Article", "News Summary", "Date of Publication"]);
+
+  var today = new Date();
+  var endTime = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 8, 59, 59);
+  var startTime = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1, 9, 0, 0);
+
+  var existingArticles = [];
+
+  for (var i = 0; i < keywordSets.length; i++) {
+    var keyword1 = keywordSets[i][0];
+    var keyword2 = keywordSets[i][1];
+
+    var urls = [
+      'https://www.energy-news.co.kr/rss/allArticle.xml',
+      `https://news.google.com/rss/search?q=${encodeURIComponent(keyword1)}+${encodeURIComponent(keyword2)}&hl=ko&gl=KR&ceid=KR:ko`
+    ];
+
+    // Fetch and process news from each URL
+    // ... (code for fetching, parsing XML, filtering, and summarizing news)
+  }
+
+  return rows;
 }
 ```
 
