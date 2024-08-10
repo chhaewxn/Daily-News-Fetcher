@@ -201,25 +201,61 @@ function fetchNewsFeed() {
   return rows;
 }
 ```
+## Technical Details
+### XML Parsing
+The script uses XmlService to parse RSS feeds. This allows for efficient extraction of news data from structured XML responses.
+
+### Rate Limiting and Error Handling
+```javascript
+var maxRetries = 2;
+for (var attempt = 0; attempt < maxRetries; attempt++) {
+  try {
+    response = UrlFetchApp.fetch(url, options);
+    var responseCode = response.getResponseCode();
+    if (responseCode === 200) {
+      break;
+    }
+  } catch (e) {
+    Logger.log('Error fetching URL: ' + e);
+  }
+  Utilities.sleep(4000 * (attempt + 1));
+}
+```
+The script implements exponential backoff for retries and includes error logging for troubleshooting.
+
+### Data Storage
+News data is stored in Google Sheets, allowing for easy access and analysis:
+```javascript
+var cumulativeRange = cumulativeSheet.getRange(cumulativeSheet.getLastRow() + 1, 1, rows.length - 1, headers.length);
+cumulativeRange.setValues(rows.slice(1).map(formatRow));
+```
+
+### Scalability Considerations
+- The script uses batch operations when interacting with Google Sheets to minimize API calls.
+- News processing is done in memory to avoid excessive read/write operations.
+
+### Setup and Usage
+1. Create sheets in Google Sheets: "KeywordSets", "Exclude Keywords", "Email Recipient Test".
+2. Set up the OpenAI API key in the fetchSummary function.
+3. Add the code to a Google Apps Script project.
+4. Set up a time-based trigger for the fetchAndCategorizeNews function.
+
+### Limitations and Considerations
+- API usage limits: Monitor OpenAI API usage and associated costs.
+- Execution time: Google Apps Script has a maximum execution time of 6 minutes per run.
+- RSS feed limitations: Some news sources may limit access or change their RSS structure.
 
 ## Conclusion
 The NewsFetcher script streamlines the process of collecting, summarizing, and disseminating energy transition-related news. By automating these tasks, it ensures timely and relevant information delivery to stakeholders, enhancing their awareness and decision-making capabilities.
 
-## Next Steps
-### Testing and Debugging:
+## Limitations and Considerations
+- API usage limits: Monitor OpenAI API usage and associated costs.
+- Execution time: Google Apps Script has a maximum execution time of 6 minutes per run.
+- RSS feed limitations: Some news sources may limit access or change their RSS structure.
 
-Thoroughly test the script to identify and resolve any issues.
-Ensure the script handles different scenarios gracefully (e.g., empty RSS feeds, API errors).
-
-### Customization:
-
-Customize the keywords, RSS feeds, and email recipients as needed.
-Adjust the summarization and duplicate detection thresholds based on feedback.
-
-### Deployment:
-
-Schedule the script to run daily using Google Apps Script triggers.
-Monitor the script's performance and make adjustments as necessary.
-This documentation provides a comprehensive overview of the NewsFetcher script, enabling you to understand its functionality, customize it to your needs, and ensure its smooth operation.
-
+## Future Enhancements
+- Implement OAuth 2.0 for secure API key management.
+- Add sentiment analysis to categorize news tone.
+- Implement a caching mechanism to reduce API calls and improve performance.
+- Develop a web interface for real-time news monitoring and keyword management.
 
