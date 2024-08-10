@@ -6,7 +6,7 @@ function fetchSummary(prompt) {
   };
 
   var payload = {
-    model: "gpt-3.5-turbo",
+    model: "gpt-4o-mini",
     messages: [
       {
         "role": "system",
@@ -19,10 +19,12 @@ function fetchSummary(prompt) {
     ],
     temperature: 1
   };
+
   var options = {
     "method": "post",
     "headers": headers,
-    "payload": JSON.stringify(payload)
+    "payload": JSON.stringify(payload),
+    "muteHttpExceptions": true
   };
 
   try {
@@ -33,91 +35,23 @@ function fetchSummary(prompt) {
   } catch (e) {
     Logger.log('Error fetching summary: ' + e);
     return 'Error fetching summary';
-  } // prompt 수정
+  }
 }
 
-// // 코사인 유사도 모델 계산 함수 
-// function tokenize(text) {
-//   return text.toLowerCase().match(/\b\w+\b/g);
-// }
-
-// function termFrequency(term, tokens) {
-//   var count = 0;
-//   for (var i = 0; i < tokens.length; i++) {
-//     if (tokens[i] === term) {
-//       count++;
-//     }
-//   }
-//   return count / tokens.length;
-// }
-
-// function termFrequencyVector(tokens) {
-//   var tfVector = {};
-//   var uniqueTokens = Array.from(new Set(tokens));
-//   for (var i = 0; i < uniqueTokens.length; i++) {
-//     tfVector[uniqueTokens[i]] = termFrequency(uniqueTokens[i], tokens);
-//   }
-//   return tfVector;
-// }
-
-// function dotProduct(vec1, vec2) {
-//   var keys = Object.keys(vec1);
-//   var product = 0;
-//   for (var i = 0; i < keys.length; i++) {
-//     if (vec2[keys[i]]) {
-//       product += vec1[keys[i]] * vec2[keys[i]];
-//     }
-//   }
-//   return product;
-// }
-
-// function magnitude(vec) {
-//   var sum = 0;
-//   var keys = Object.keys(vec);
-//   for (var i = 0; i < keys.length; i++) {
-//     sum += vec[keys[i]] * vec[keys[i]];
-//   }
-//   return Math.sqrt(sum);
-// }
-
-// function cosineSimilarity(str1, str2) {
-//   var tokens1 = tokenize(str1);
-//   var tokens2 = tokenize(str2);
-//   var tfVector1 = termFrequencyVector(tokens1);
-//   var tfVector2 = termFrequencyVector(tokens2);
-
-//   var dotProd = dotProduct(tfVector1, tfVector2);
-//   var mag1 = magnitude(tfVector1);
-//   var mag2 = magnitude(tfVector2);
-
-//   return dotProd / (mag1 * mag2);
-// }
-
-// function isArticleDuplicate(newArticle, existingArticles) {
-//   for (var i = 0; i < existingArticles.length; i++) {
-//     var existingArticle = existingArticles[i];
-//     if (cosineSimilarity(newArticle.title, existingArticle.title) > 0.8 || 
-//         cosineSimilarity(newArticle.description, existingArticle.description) > 0.8) {
-//       return true; 
-//     }
-//   }
-//   return false;
-// }
-
 // 자카드 유사도 모델 계산 함수 - 기준 수치는 변경 필요
-function jaccardSimilarity(str1, str2) { // Jaccard Similarity Model
-  var set1 = new Set(str1.split(/\s+/));
-  var set2 = new Set(str2.split(/\s+/));
+function jaccardSimilarity(str1, str2) {
+  var set1 = new Set(str1.toLowerCase().split(/\s+/));
+  var set2 = new Set(str2.toLowerCase().split(/\s+/));
   var intersection = new Set([...set1].filter(x => set2.has(x)));
   var union = new Set([...set1, ...set2]);
-  return intersection.size / union.size; // Calculate the ratio of intersaction to union
+  return intersection.size / union.size;
 }
 
 function isArticleDuplicate(newArticle, existingArticles) {
   for (var i = 0; i < existingArticles.length; i++) {
     var existingArticle = existingArticles[i];
-    if (jaccardSimilarity(newArticle.title, existingArticle.title) > 0.2 || 
-        jaccardSimilarity(newArticle.description, existingArticle.description) > 0.2) {
+    if (jaccardSimilarity(newArticle.title.toLowerCase(), existingArticle.title.toLowerCase()) > 0.15 || 
+        jaccardSimilarity(newArticle.description.toLowerCase(), existingArticle.description.toLowerCase()) > 0.15) {
       return true; 
     }
   }
@@ -127,7 +61,7 @@ function isArticleDuplicate(newArticle, existingArticles) {
 // 키워드셋 반영하는 시트 별도로 분리하기 
 function fetchKeywordSets() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName("KeywordSets");
+  var sheet = ss.getSheetByName("KeywordSets_v1");
   var dataRange = sheet.getDataRange();
   var values = dataRange.getValues();
   
@@ -139,6 +73,9 @@ function fetchKeywordSets() {
       keywordSets.push([keyword1, keyword2]);
     }
   }
+  
+  return keywordSets;
+}
 
 // 키워드셋 업데이트 트리거 설정 
 function onEdit(e) {
@@ -148,73 +85,101 @@ function onEdit(e) {
     Logger.log("KeywordSets updated");
   }
 }
-  return keywordSets;
+
+// 디버깅 테스트 시, SheetByName은 Recipient Email Test로 설정하기 
+function getEmailRecipients() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName("Email Recipient Test");
+  var lastRow = sheet.getLastRow();
+  var emailRange = sheet.getRange("B2:B" + lastRow);
+  var emailValues = emailRange.getValues();
+
+  var recipient = [];
+  for (var i = 0; i < emailValues.length; i++) {
+    if (emailValues[i][0] !== "") {
+      recipient.push(emailValues[i][0]);
+    } else {
+      break; // 빈 셀을 만나면 루프 종료
+    }
+  }
+
+  return recipient.join(", ");
 }
 
-function sendEmailWithTable(subject, recipient, tableData) {
-  // 현재 날짜 가져오기
+function sendEmailWithCardNews(subject, recipient, newsData) {
   var today = new Date();
   var dateString = Utilities.formatDate(today, Session.getScriptTimeZone(), "yyyy년 MM월 dd일");
 
-  // 테이블 스타일 정의 - 표의 헤더 디자인 추가 
-  var tableStyle = 'border-collapse: collapse; width: 100%;';
-  var thStyle = 'background-color: #f0f0f0; font-weight: bold; border: 2px solid #ddd; padding: 8px; text-align: left;';
-  var tdStyle = 'border: 1px solid #ddd; padding: 8px;';
-
-  // 테이블 데이터를 HTML 테이블 형식으로 변환
-  var htmlTable = '<table style="' + tableStyle + '">';
-  
-  // 테이블 헤더 추가
-  htmlTable += '<tr>';
-  htmlTable += '<th style="' + thStyle + '">Keyword</th>';
-  htmlTable += '<th style="' + thStyle + '">Title of News</th>';
-  htmlTable += '<th style="' + thStyle + '">News Summary</th>';
-  htmlTable += '<th style="' + thStyle + '">Date of Publication</th>';
-  htmlTable += '<th style="' + thStyle + '">Link to News Article</th>';
-  htmlTable += '</tr>';
-  
-  // 테이블 데이터 추가 (첫 번째 행은 헤더이므로 건너뜁니다)
-  for (var i = 1; i < tableData.length; i++) {
-    htmlTable += '<tr>';
-    // Keyword (두 번째와 세 번째 열에서 keyword 결합)
-    htmlTable += '<td style="' + tdStyle + '">' + tableData[i][1] + ' ' + tableData[i][2] + '</td>';
-    // Title of News
-    htmlTable += '<td style="' + tdStyle + '">' + tableData[i][3] + '</td>';
-    // News Summary
-    htmlTable += '<td style="' + tdStyle + '">' + tableData[i][5] + '</td>';
-    // Date of Publication
-    htmlTable += '<td style="' + tdStyle + '">' + tableData[i][6] + '</td>';
-    // Link to News Article
-    htmlTable += '<td style="' + tdStyle + '"><a href="' + tableData[i][4] + '">Link</a></td>';
-    htmlTable += '</tr>';
+  // 키워드별로 뉴스 그룹화
+  var newsGroups = {};
+  for (var i = 1; i < newsData.length; i++) {
+    var key = newsData[i][1] + (newsData[i][2] ? ' ' + newsData[i][2] : '');
+    if (!newsGroups[key]) {
+      newsGroups[key] = [];
+    }
+    newsGroups[key].push(newsData[i]);
   }
-  htmlTable += '</table>';
 
- // 관련 링크와 추가 문구
-  var additionalContent = '<p>지난 뉴스 피드를 모아볼 수 있는 Google Sheet 링크는 '+'<a href="https://docs.google.com/spreadsheets/d/1wWi2EnSLBcWj6P137w0wEjJDfFdpySy39hA_Q4z31Ok/edit?usp=sharing">여기</a>'+'에서 확인하실 수 있습니다.</p>'
-+ '<p>추가 기능 요청이나 개선 사항이 있으시면 언제든지 chaewon.song@airliquide.com으로 연락해 주시기 바랍니다.</p>'
-+ '<p>더 나은 NewsFetcher 서비스를 제공하기 위해 적극적으로 반영하겠습니다.</p>'
-+ '<p>행복한 하루 보내시길 바랍니다.</p>'
+  // HTML 템플릿
+  var htmlTemplate = `
+    <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background-color: #ffffff;">
+      <h1 style="color: #333; text-align: center; margin-bottom: 30px; font-size: 24px;">{dateString} Daily News Fetcher ✉</h1>
+      {cardNews}
+      <div style="margin-top: 30px; font-size: 12px; color: #666; background-color: #fff; padding: 20px; border-radius: 8px;">
+        <p>지난 뉴스 피드를 모아볼 수 있는 Google Sheet 링크는 <a href="https://docs.google.com/spreadsheets/d/1wWi2EnSLBcWj6P137w0wEjJDfFdpySy39hA_Q4z31Ok/edit?usp=sharing" style="color: #007bff; text-decoration: none;">여기</a>에서 확인하실 수 있습니다.</p>
+        <p>첨부된 이미지 파일을 통해 News Fetcher의 추가할 수 있는 KeywordSets Sheet Guideline을 확인하실 수 있습니다.</p>
+        <p>추가 기능 요청이나 개선 사항이 있으시면 언제든지 chaewon.song@airliquide.com으로 연락해 주시기 바랍니다.</p>
+        <p>더 나은 News Fetcher 서비스를 제공하기 위해 적극적으로 반영하겠습니다.</p>
+        <p>행복한 하루 보내시길 바랍니다! 😀</p>
+      </div>
+    </div>
+  `;
+
+  // 카드 뉴스 HTML 생성
+  var cardNews = '';
+  for (var key in newsGroups) {
+    cardNews += `
+      <div style="margin-bottom: 20px; background-color: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        <div style="background-color: #f0f0f0; color: #333; padding: 8px 15px; font-size: 16px; font-weight: bold;">
+          ${key}
+        </div>
+        <div style="padding: 15px;">
+    `;
+    
+    newsGroups[key].forEach(function(news) {
+      cardNews += `
+        <div style="border-bottom: 1px solid #eee; padding: 12px 0;">
+          <div style="font-size: 14px; font-weight: bold; margin-bottom: 8px; color: #333;">${news[3]}</div>
+          <div style="font-size: 12px; color: #666; margin-bottom: 8px;">${news[5]}</div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <a href="${news[4]}" style="color: #007bff; text-decoration: none; font-size: 12px; margin-right: 15px;">Link to News</a>
+            <div style="font-size: 11px; color: #999; flex-shrink: 0;">${news[6]}</div>
+          </div>
+        </div>
+      `;
+    });
+    
+    cardNews += `
+        </div>
+      </div>
+    `;
+  }
+
+  // HTML 템플릿에 데이터 삽입
+  var htmlBody = htmlTemplate.replace('{dateString}', dateString).replace('{cardNews}', cardNews);
+
+  var guidelineImageId = "1AOA_Qu5FfxlF4xVrJy935Q-NZz05bSSa";
+  var guidelineImage = DriveApp.getFileById(guidelineImageId).getBlob().setName("KeywordSets_Guideline.png");
 
   var emailOptions = {
     to: recipient,
     subject: subject,
-    htmlBody: '<p>' + dateString + ' Daily News Fetcher</p>' + htmlTable + additionalContent
+    htmlBody: htmlBody,
+    attachments: [guidelineImage]
   };
 
   // 이메일 보내기
   MailApp.sendEmail(emailOptions);
-}
-
-function createCharts(sheet, dataRange) { //
-  var chartBuilder = sheet.newChart();
-  chartBuilder.addRange(dataRange)
-    .setChartType(Charts.ChartType.COLUMN)
-    .setPosition(2, 7, 0, 0)
-    .setOption('title', 'Number of Articles by keyword')
-    .build();
-  
-  sheet.insertChart(chartBuilder.build());
 }
 
 function fetchAndCategorizeNews() {
@@ -254,11 +219,10 @@ function fetchAndCategorizeNews() {
     // 이메일 전송
     var today = new Date();
     var dateString = Utilities.formatDate(today, Session.getScriptTimeZone(), "yyyy년 MM월 dd일");
-    var subject = dateString + ' Daily News Summary';
-    
-    // 테스트용 메일 recipient
-    var recipient = 'chaewon1019@ewhain.net';
-    sendEmailWithTable(subject, recipient, rows);
+    var subject = dateString + ' Daily News Fetcher ✉';
+
+    var recipient = getEmailRecipients();
+    sendEmailWithCardNews(subject, recipient, rows);
 
   } else {
     Logger.log('No articles meeting the criteria were found');
@@ -271,8 +235,26 @@ function formatRow(row) {
   return [updatedDate, row[1], row[2], row[3], row[5], row[6], row[4]];
 }
 
+function fetchExcludeKeywords() { //제외 키워드 가져오는 함수 
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName("Exclude Keywords");
+  var dataRange = sheet.getDataRange();
+  var values = dataRange.getValues();
+  
+  var excludeKeywords = [];
+  for (var i = 1; i < values.length; i++) {  // 첫 번째 행은 건너뛰기 
+    var keyword = values[i][0].toString().trim().toLowerCase();
+    if (keyword !== "") {
+      excludeKeywords.push(keyword);
+    }
+  }
+  
+  return excludeKeywords;
+}
+
 function fetchNewsFeed() {
   var keywordSets = fetchKeywordSets();
+  var excludeKeywords = fetchExcludeKeywords();
   var now = new Date();
   var updateTime = Utilities.formatDate(now, Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm");
 
@@ -295,10 +277,27 @@ function fetchNewsFeed() {
     // Energy News Korea RSS Feed
     var energyNewsUrl = 'https://www.energy-news.co.kr/rss/allArticle.xml';
 
-    // 산업자원통상부 RSS Feed
-    var motieNewsUrl = 'https://www.motie.go.kr/kor/article/ATCL3f49a5a8c/rss';
+    // 중앙일보 RSS Feed
+    // var joinNewsUrl = 'http://rss.joinsmsn.com/joins_it_list.xml';
 
-    var urls = [energyNewsUrl, googleNewsUrl, motieNewsUrl];
+    // 산업자원통상부 RSS Feed
+    // var motieNewsUrl = 'https://www.motie.go.kr/kor/article/ATCL3f49a5a8c/rss';
+
+    // 연합뉴스 RSS Feed 
+    // var ynaNewsUrl = 'https://www.yna.co.kr/rss/news.xml';
+
+    var urls = [energyNewsUrl, googleNewsUrl];
+
+    // 추가 헤더 설정 
+    var options = {
+      "method": "get",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.5"
+      },
+      "muteHttpExceptions": true
+    };
 
     for (var u = 0; u < urls.length; u++) {
       var url = urls[u];
@@ -307,7 +306,7 @@ function fetchNewsFeed() {
       var maxRetries = 2;
       for (var attempt = 0; attempt < maxRetries; attempt++) {
         try {
-          response = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+          response = UrlFetchApp.fetch(url, options); // 여기서 options 사용하기 
           var responseCode = response.getResponseCode();
           Logger.log('Response Code: ' + responseCode);
           if (responseCode === 200) {
@@ -319,7 +318,7 @@ function fetchNewsFeed() {
         } catch (e) {
           Logger.log('Error fetching URL: ' + e);
         }
-        Utilities.sleep(2000 * (attempt + 1));
+        Utilities.sleep(4000 * (attempt + 1));
       }
 
       if (!response || response.getResponseCode() !== 200) {
@@ -342,8 +341,11 @@ function fetchNewsFeed() {
 
           var newArticle = { title: title, description: description };
 
-          if (pubDate >= startTime && pubDate <= endTime && !isArticleDuplicate(newArticle, existingArticles) &&
-          (title.includes(keyword1) && title.includes(keyword2) || description.includes(keyword1) && description.includes(keyword2))) {
+          var shouldExclude = excludeKeywords.some(function(excludeKeyword) {
+            return title.toLowerCase().includes(excludeKeyword) || description.toLowerCase().includes(excludeKeyword);
+          });
+
+          if (!shouldExclude && pubDate >= startTime && pubDate <= endTime && !isArticleDuplicate(newArticle, existingArticles) && (title.toLowerCase().includes(keyword1.toLowerCase()) && title.toLowerCase().includes(keyword2.toLowerCase()) || description.toLowerCase().includes(keyword1.toLowerCase()) && description.toLowerCase().includes(keyword2.toLowerCase()))) {
             var summary = fetchSummary(description);
             rows.push([updateTime, keyword1, keyword2, title, link, summary, dateStr]);
             existingArticles.push(newArticle);
