@@ -2,8 +2,12 @@
 
 ## Overview
 This project consists of two main components:
-(1) Daily News Fetcher: An automated news collection and summarization system developed using Google Apps Script.
-(2) Trend Report Generator: A system that analyzes accumulated news data and generates monthly trend reports.
+
+**(1) Daily News Fetcher**
+: An automated news collection and summarization system developed using Google Apps Script.
+
+**(2) Trend Report Generator**
+: A system that analyzes accumulated news data and generates monthly trend reports.
 
 Both components work together to provide comprehensive insights into specific industry trends and developments.
 
