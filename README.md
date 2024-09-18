@@ -1,14 +1,19 @@
-# 📰 Daily News Fetcher
+# 📰 Daily News Fetcher Daily News Fetcher and Trend Report Generator
 
 ## Overview
-Daily News Fetcher is an automated news collection and summarization system developed using Google Apps Script. It collects news related to specific keywords, summarizes them using AI, and sends email digests.
+This project consists of two main components:
+(1) Daily News Fetcher: An automated news collection and summarization system developed using Google Apps Script.
+(2) Trend Report Generator: A system that analyzes accumulated news data and generates monthly trend reports.
+
+Both components work together to provide comprehensive insights into specific industry trends and developments.
 
 ## Key Features
 1. Multi-source news collection (Google News, Energy News Korea)
 2. Keyword-based news filtering
 3. News summarization using OpenAI GPT model
-4. Email dispatch (card news format)
+4. Email dispatch (card news format for daily news, PDF report for monthly trends)
 5. Data storage and management using Google Sheets
+6. Monthly trend analysis and report generation
 
 ## Technical Stack
 - Google Apps Script
@@ -16,8 +21,10 @@ Daily News Fetcher is an automated news collection and summarization system deve
 - OpenAI GPT API
 - Google Sheets API
 - Gmail API
+- HTML and CSS for email templates and PDF generation
 
 ## Script Breakdown
+### Daily News Fetcher
 ### (1) News Summarization
 This function uses the OpenAI GPT API to summarize news content. It sends a structured prompt to the API and handles the response, including error management.
 
@@ -201,6 +208,100 @@ function fetchNewsFeed() {
   return rows;
 }
 ```
+
+### Trend Report Generator
+### (1) Report Generation and Emailing
+This function generates an HTML report, converts it to PDF, and emails it to recipients.
+```javascript
+function generateAndEmailTrendReport() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var reportSheet = ss.getSheetByName("Trend Report");
+  
+  if (!reportSheet) {
+    Logger.log("Trend Report sheet not found");
+    return;
+  }
+
+  var reportData = reportSheet.getDataRange().getValues();
+  var dateString = getFormattedDateString();
+  var htmlContent = generateHTMLReport(reportData, dateString);
+
+  var pdfBlob = generatePDF(htmlContent);
+  sendEmailWithPDF(pdfBlob, htmlContent, dateString);
+}
+```
+### (2) HTML Report Generation
+This function creates an HTML template for the trend report, structuring the content into sections.
+```javascript
+function generateHTMLReport(reportData, dateString) {
+  var html = `
+    <!DOCTYPE html>
+    <html lang="ko">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>${dateString} 동향 분석 및 전망 보고서</title>
+      <style>
+        /* ... CSS styles ... */
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <h1>${dateString} 동향 분석 및 전망 보고서</h1>
+        <p class="date">${reportData[1][0]}</p>
+  `;
+
+  // ... Content generation logic ...
+
+  html += "</div></body></html>";
+  return html;
+}
+```
+
+### (3) PDF Generation
+This function converts the HTML content to a PDF file.
+```javascript
+function generatePDF(htmlContent) {
+  var blob = Utilities.newBlob(htmlContent, 'text/html', 'report.html');
+  var pdf = DriveApp.createFile(blob).getAs('application/pdf');
+  pdf.setName("동향 분석 및 전망 보고서.pdf");
+  return pdf;
+}
+```
+
+### (4) News Analysis and Report Generation
+This function analyzes the accumulated news data and generates a trend report.
+```javascript
+function analyzeNewsAndGenerateReport() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var keywordSheet = ss.getSheetByName("KeywordSets");
+  var cumulativeNewsSheet = ss.getSheetByName("Cumulative News");
+  var reportSheet = ss.getSheetByName("Trend Report");
+  
+  // ... Data processing and analysis logic ...
+
+  generateAndEmailTrendReport();
+}
+```
+### (5) Category Analysis
+This function uses the OpenAI API to analyze news data for each category and generate insights.
+```javascript
+function analyzeCategory(category, news) {
+  var prompt = `다음은 ${category} 관련 누적된 뉴스 기사 데이터입니다:\n\n`;
+  // ... Prompt construction ...
+
+  var response = callOpenAI(prompt);
+  var parsedResponse = parseJSONResponse(response);
+  
+  return {
+    trends: Array.isArray(parsedResponse.trends) ? parsedResponse.trends : [],
+    issues: Array.isArray(parsedResponse.issues) ? parsedResponse.issues : [],
+    forecast: typeof parsedResponse.forecast === 'string' ? parsedResponse.forecast : "전망 데이터 없음",
+    relatedNews: Array.isArray(parsedResponse.relatedNews) ? parsedResponse.relatedNews : []
+  };
+}
+```
+
 ## Technical Details
 ### XML Parsing
 The script uses XmlService to parse RSS feeds. This allows for efficient extraction of news data from structured XML responses.
@@ -235,10 +336,10 @@ cumulativeRange.setValues(rows.slice(1).map(formatRow));
 - News processing is done in memory to avoid excessive read/write operations.
 
 ### Setup and Usage
-1. Create sheets in Google Sheets: "KeywordSets", "Exclude Keywords", "Email Recipient Test".
-2. Set up the OpenAI API key in the fetchSummary function.
+1. Set up sheets in Google Sheets: "KeywordSets", "Exclude Keywords", "Email Recipient Test", "Cumulative News", "Trend Report".
+2. Configure the OpenAI API key in the script properties.
 3. Add the code to a Google Apps Script project.
-4. Set up a time-based trigger for the fetchAndCategorizeNews function.
+4. Set up time-based triggers for both the news fetching and trend report generation functions.
 
 ### Limitations and Considerations
 - API usage limits: Monitor OpenAI API usage and associated costs.
@@ -246,7 +347,7 @@ cumulativeRange.setValues(rows.slice(1).map(formatRow));
 - RSS feed limitations: Some news sources may limit access or change their RSS structure.
 
 ## Conclusion
-The NewsFetcher script streamlines the process of collecting, summarizing, and disseminating energy transition-related news. By automating these tasks, it ensures timely and relevant information delivery to stakeholders, enhancing their awareness and decision-making capabilities.
+The combination of the Daily News Fetcher and Trend Report Generator creates a powerful system for monitoring and analyzing industry trends. By automating the collection, summarization, and analysis of news data, it provides valuable insights to stakeholders, enhancing their decision-making capabilities in rapidly evolving industries.
 
 ## Limitations and Considerations
 - API usage limits: Monitor OpenAI API usage and associated costs.
@@ -254,8 +355,8 @@ The NewsFetcher script streamlines the process of collecting, summarizing, and d
 - RSS feed limitations: Some news sources may limit access or change their RSS structure.
 
 ## Future Enhancements
-- Implement OAuth 2.0 for secure API key management.
-- Add sentiment analysis to categorize news tone.
-- Implement a caching mechanism to reduce API calls and improve performance.
-- Develop a web interface for real-time news monitoring and keyword management.
+- Implement more advanced natural language processing techniques for better trend analysis.
+- Add interactive elements to the PDF report, such as clickable links and expandable sections.
+- Develop a web interface for real-time monitoring of trends and manual adjustment of the analysis.
+- Implement machine learning models for predictive analytics based on historical trend data.
 
